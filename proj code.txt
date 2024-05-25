@@ -1,0 +1,108 @@
+-- go through the columns 
+SELECT * FROM proj_sam.layoffs;
+
+-- create copy of the table to work on it
+create table layoffs2 Like layoffs;
+
+-- insert values from original data to here
+insert into layoffs2 select * from layoffs;
+
+-- check whether everything is updated
+select * from layoffs2;
+
+-- step 1 removing duplicates by providing unique row numbers , partition by all columns
+select * , ROW_NUMBER()
+ over(partition by company,location,industry,total_laid_off,percentage_laid_off,`date`,stage,country,funds_raised_millions) as rownum
+from layoffs2;
+
+-- identify the duplicates using row number as duplicates
+select * from 
+(select * , ROW_NUMBER()
+ over(partition by company,location,industry,total_laid_off,percentage_laid_off,`date`,stage,country,funds_raised_millions) as rownum
+from layoffs2) as duplicates
+where rownum > 1;
+
+-- checking whether it is duplicate
+select * from layoffs2 where company = "casper";
+
+-- tried to delete duplicates on same table , so creating new one with rownum and deleting it.
+CREATE TABLE `layoffs4` (
+  `company` text,
+  `location` text,
+  `industry` text,
+  `total_laid_off` int DEFAULT NULL,
+  `percentage_laid_off` text,
+  `date` text,
+  `stage` text,
+  `country` text,
+  `funds_raised_millions` int DEFAULT NULL,
+  `row` int
+  
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ INSERT INTO `proj_sam`.`layoffs4`
+(`company`,
+`location`,
+`industry`,
+`total_laid_off`,
+`percentage_laid_off`,
+`date`,
+`stage`,
+`country`,
+`funds_raised_millions`,
+`row`)
+select `company`,
+`location`,
+`industry`,
+`total_laid_off`,
+`percentage_laid_off`,
+`date`,
+`stage`,
+`country`,
+`funds_raised_millions`,
+ROW_NUMBER() over(partition by company,location,industry,total_laid_off,percentage_laid_off,`date`,stage,country,funds_raised_millions)
+from layoffs2;
+select * from layoffs4;
+
+-- deleting duplucates
+delete from layoffs4 where `row`>1;
+
+-- step 2 standardizing data
+-- finding and fixing issue
+-- trimming extra spaces
+-- finding issues in categories
+-- formatting data types
+select * from layoffs4 where `row`>1;
+
+-- trimming extra spaces , from every column
+
+select trim(company), trim(location), trim(industry), trim(country) from layoffs4;
+update layoffs4 set company = trim(company), industry=trim(industry), country=trim(country);
+select * from layoffs4;
+
+-- finding issues in categories -country
+
+select distinct country from layoffs4 order by country;
+-- 2 united states with . lets trim it ;
+select trim(trailing '.' from country) from layoffs4;
+
+update layoffs4 set country = trim(trailing '.' from country);
+select distinct country from layoffs4 order by country;
+
+-- formatting data types of date- text into date
+
+select * from layoffs4;
+update layoffs4 set `date` = str_to_date(`date`, '%m/%d/%Y');
+alter table layoffs4 modify column `date` date;
+select * from layoffs4;
+
+-- dealing with null/blank values
+-- checking null values in company, location and industry
+-- only industry has null values
+
+select * from layoffs4 where industry is null or industry =''; 
+-- comparing industry type for companies in other row 
+select industry from layoffs4 where company like '%Carvana%';
+
+-- updating industry type
+update layoffs4 set 
