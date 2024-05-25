@@ -1,0 +1,3 @@
+- 👋 Hi, I’m @keerthana-analyst
+- 👀 I’m interested in data analysis
+- 🌱 I’m currently learning SQL and Python
